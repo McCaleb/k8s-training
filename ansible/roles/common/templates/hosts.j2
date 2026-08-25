@@ -1,0 +1,25 @@
+# See hosts(5) for format and examples:
+
+# Loopback entries; do not change.
+# For historical reasons, localhost precedes localhost.localdomain:
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+# The following lines are desirable for IPv6 capable hosts
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
+# API endpoint (keepalived VIP)
+{{ vip }}	{{ vip_hostname }}.{{ vip_domain }}	{{ vip_hostname }}
+
+{% for group in ['load_balancers', 'control_nodes', 'worker_nodes'] %}
+# {{ group }}
+{% for host in groups[group] %}
+{{ hostvars[host].ansible_host }}	{{ host }}	{{ host.split('.')[0] }}
+{% endfor %}
+
+{% endfor %}
+
+
+

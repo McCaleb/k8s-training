@@ -1,0 +1,35 @@
+all:
+  children:
+    load_balancers:
+      hosts:
+        d-k8s-lb01.opnsense.lab:
+          ansible_host: 172.16.1.101
+        d-k8s-lb02.opnsense.lab:
+          ansible_host: 172.16.1.102
+    control_nodes:
+      hosts:
+        d-k8s-cn01.opnsense.lab:
+          ansible_host: 172.16.1.104
+        d-k8s-cn02.opnsense.lab:
+          ansible_host: 172.16.1.105
+        d-k8s-cn03.opnsense.lab:
+          ansible_host: 172.16.1.106
+    worker_nodes:
+      hosts:
+        d-k8s-wn01.opnsense.lab:
+          ansible_host: 172.16.1.107
+        d-k8s-wn02.opnsense.lab:
+          ansible_host: 172.16.1.108
+        d-k8s-wn03.opnsense.lab:
+          ansible_host: 172.16.1.109
+        d-k8s-wn04.opnsense.lab:
+          ansible_host: 172.16.1.110
+        d-k8s-wn05.opnsense.lab:
+          ansible_host: 172.16.1.111
+        d-k8s-wn06.opnsense.lab:
+          ansible_host: 172.16.1.112       
+  vars:
+    vip: 172.16.1.103
+    vip_cidr: 24
+    vip_hostname: d-k8s-api
+    vip_domain: opnsense.lab

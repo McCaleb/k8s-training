@@ -1,0 +1,55 @@
+# /etc/keepalived/keepalived.conf
+global_defs {
+    router_id {{ ansible_facts['hostname'] }}
+    enable_script_security
+    script_user keepalived_script
+    vrrp_check_unicast_src
+}
+
+vrrp_script check_haproxy {
+    # This script runs every interval
+    script   "/usr/local/bin/check_haproxy.sh"
+    # Run every 2 seconds
+    interval 2
+    # Kill and count as failed if it exceeds 2 seconds
+    timeout  2
+    # Two consecutive failures mark the script failed
+    fall     2
+    # two consecutive successes mark it recovered.
+    rise     2
+    # so apprx 4 seconds from HAProxy dying to the VIP moving.
+}
+
+vrrp_instance K8S_API {
+    # Both nodes start BACKUP and elect on priority.
+    state           BACKUP
+    interface       {{ ansible_facts['default_ipv4']['interface'] }}
+    # The VRID. Must be identical on both nodes and unique on the layer 2 segment.
+    virtual_router_id 81
+    # Higher wins. Range 1 to 254.
+    priority        {{ ansible_host.split('.')[-1] }}
+    advert_int      1
+    nopreempt
+
+    unicast_src_ip  {{ ansible_host }}
+    unicast_peer {
+{% for host in groups['load_balancers'] if host != inventory_hostname %}
+        {{ hostvars[host].ansible_host }}
+{% endfor %}
+    }
+
+    authentication {
+        # group id, not a credential. Prevents stray keepalived from joining.
+        auth_type PASS
+        auth_pass QXcNkhkX
+    }
+
+    virtual_ipaddress {
+        {{ vip }}/{{ vip_cidr }} dev {{ ansible_facts['default_ipv4']['interface'] }}
+    }
+
+    # Binds the script to this instance. Without it the script runs and nothing acts on the result.
+    track_script {
+        check_haproxy
+    }
+}

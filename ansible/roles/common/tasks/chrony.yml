@@ -1,0 +1,60 @@
+# Configures crony on Debian hosts
+---
+- name: Gather service state
+  ansible.builtin.service_facts:
+
+- name: Disable systemd-timesyncd
+  block:
+    - name: Stop service
+      ansible.builtin.systemd_service:
+        enabled: false
+        name: systemd-timesyncd
+        state: stopped
+      when: ansible_facts['services']['ntpd.service']['status'] | default('not-found') != 'not-found'
+      # when: "'systemd-timesyncd.service' in ansible_facts['services']"
+
+    - name: Purge packages and configuration
+      ansible.builtin.apt:
+        name: systemd-timesyncd
+        state: absent
+        purge: true
+
+- name: Install and run chrony
+  block:
+    - name: Install chrony
+      ansible.builtin.apt:
+        name: chrony
+        state: present
+        update_cache: true
+      notify: Restart chrony
+
+    - name: Disable default NTP server or pool entries
+      ansible.builtin.replace:
+        path: /etc/chrony/chrony.conf
+        regexp: '^(pool|server)\s+.*$'
+        replace: '# \1'
+      notify: Restart chrony
+
+    - name: Configure NTP sources
+      ansible.builtin.template:
+        src: chrony.conf.j2
+        dest: /etc/chrony/sources.d/ansible.sources
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart chrony
+
+    - name: Ensure chrony daemon is enabled and running
+      ansible.builtin.service:
+        name: chrony
+        enabled: true
+        state: started
+
+    - name: Apply pending chrony restarts before verification
+      ansible.builtin.meta: flush_handlers
+
+- name: Verify the clock is synchronised
+  ansible.builtin.command:
+              #  waitsync [max-tries [max-correction [max-skew [interval]]]]
+    cmd: chronyc waitsync 30 0.1 0.0 1
+  changed_when: false

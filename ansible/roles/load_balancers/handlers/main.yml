@@ -1,0 +1,15 @@
+---
+# handlers file for load_balancers
+
+- name: Reload keepalived
+  ansible.builtin.systemd_service:
+    name: keepalived.service
+    state: reloaded
+  listen: "Reload keepalived"
+
+- name: Reload haproxy
+  ansible.builtin.systemd_service:
+    name: haproxy.service
+    state: reloaded
+  listen: "Reload haproxy"
+...

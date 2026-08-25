@@ -1,0 +1,21 @@
+---
+# defaults file for common
+
+common_packages:
+  - tree
+  - vim
+
+## Time
+common_ntp_sources:
+  - directive: server
+    address: 172.16.1.1
+    options: iburst maxpoll 8
+  - directive: server
+    address: 10.0.1.1
+    options: iburst maxpoll 8
+  - directive: pool
+    address: time.nist.gov
+    options: iburst maxsources 2
+  - directive: server
+    address: time.cloudflare.com
+    options: iburst

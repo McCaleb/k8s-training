@@ -1,0 +1,62 @@
+---
+# tasks file for common
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+  when: common_packages | default([]) | length > 0
+
+- name: Apply updates
+  ansible.builtin.apt:
+    update_cache: true
+    name: "*"
+    state: latest
+    clean: yes
+
+- name: Configure chrony
+  ansible.builtin.import_tasks:
+    file: chrony.yml
+
+- name: Populate hosts file with cluster systems
+  block:
+    - name: Stop cloud-init from managing /etc/hosts
+      ansible.builtin.lineinfile:
+        path: /etc/cloud/cloud.cfg
+        regexp: '^\s*-\s+update_etc_hosts\s*$'
+        state: absent
+
+    - name: Place hosts file tempate
+      ansible.builtin.template:
+        dest: /etc/hosts
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        src: templates/hosts.j2
+
+- name: Enable persistent logging for the systemd journal
+  block:
+    - name: Set storage option to persistent in journald.conf
+      community.general.ini_file:
+        create: false
+        exclusive: true
+        modify_inactive_option: true
+        no_extra_spaces: true
+        option: Storage
+        section: Journal
+        path: /etc/systemd/journald.conf
+        value: persistent
+        state: present
+
+    - name: Restart systemd-journald
+      ansible.builtin.systemd_service:
+        name: systemd-journald
+        state: restarted
+        daemon-reload: true
+
+    - name: Restart and flush journald
+      ansible.builtin.command:
+        cmd: journalctl --flush
+      changed_when: false

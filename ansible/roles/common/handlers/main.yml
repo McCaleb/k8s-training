@@ -1,0 +1,9 @@
+---
+# handlers file for common
+
+- name: Restart chrony
+  ansible.builtin.service:
+    name: chrony
+    state: restarted
+  listen: Restart chrony
+...

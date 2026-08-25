@@ -1,0 +1,77 @@
+---
+# tasks file for load_balancers
+
+- name: Install packages
+  ansible.builtin.apt:
+    name:
+      - haproxy
+      - keepalived
+      - socat             # Good for reading backend state. HAProxy exposes Unix socket: /run/haproxy/admin.sock
+      - libuser           # Required for ansible "user" module
+
+- name: Configure haproxy health checks for keepalived
+  block:
+    - name: Create keepalived_script user
+      ansible.builtin.user:
+        comment: "Runs keepalived health check script"
+        create_home: false
+        local: true
+        name: keepalived_script
+        password_lock: true
+        shell: /usr/sbin/nologin
+        state: present
+        system: true
+
+    - name: Place health check script
+      ansible.builtin.copy:
+        src: check_haproxy.sh
+        dest: /usr/local/bin/check_haproxy.sh
+        owner: root
+        mode: '0755'
+        group: root
+
+- name: Install haproxy
+  block:
+    - name: Preserve defualt config
+      ansible.builtin.copy:
+        dest: /etc/haproxy/haproxy.cfg.original
+        force: false      # Don't clobber the backup on subsequent runs
+        remote_src: true
+        src: /etc/haproxy/haproxy.cfg
+        owner: root
+        mode: '0640'
+        group: root
+
+    - name: Place and verify haproxy.cfg
+      ansible.builtin.template:
+        dest: /etc/haproxy/haproxy.cfg
+        force: true
+        src: haproxy.cfg.j2
+        owner: root
+        mode: '0644'
+        group: root
+        validate: "haproxy -c -f %s"
+      notify: "Reload haproxy"
+
+- name: Install keepalived
+  block:
+    - name: Place and verify keepalived.conf
+      ansible.builtin.template:
+        dest: /etc/keepalived/keepalived.conf
+        force: true
+        owner: root
+        mode: '0644'
+        group: root
+        src: keepalived.conf.j2
+        validate: "keepalived -t -f %s"
+      notify: "Reload keepalived"
+
+- name: Enable and start services
+  ansible.builtin.systemd_service:
+    enabled: true
+    name: "{{ item }}"
+    state: started
+  loop:
+    - haproxy.service     # Best to do haproxy first
+    - keepalived.service
+...
