@@ -1,0 +1,136 @@
+---
+- name: Install basic prereq packages
+  ansible.builtin.apt:
+    name:
+      - fio
+      - conntrack          # kube-proxy needs it
+      - socat              # kubectl port-forward needs it
+      - ethtool            # CNI plugins use it for interface config
+      - nftables
+      - netcat-openbsd
+      - containerd
+    state: present
+    update_cache: true
+
+- name: Kernel modules
+  block:
+    - name: Persist kernel modules for the runtime and kube-proxy
+      ansible.builtin.copy:
+        content: |
+          overlay
+          br_netfilter
+        dest: /etc/modules-load.d/kubernetes.conf
+        mode: '0644'
+
+    - name: Reload systemd-modules-load
+      ansible.builtin.systemd_service:
+        name: systemd-modules-load
+        state: restarted
+
+- name: Disable swap
+  block:
+    - name: Disable swap for the current boot
+      ansible.builtin.command: swapoff -a
+      when: ansible_facts['swaptotal_mb'] > 0
+      changed_when: true
+
+    - name: Comment out swap entries in fstab
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\sswap\s.*)$'
+        replace: '# \1'
+
+- name: Configure sysctl
+  block:
+    - name: Persist sysctl params for the runtime and kube-proxy
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/kubernetes.conf
+        force: true
+        mode: '0644'
+        owner: root
+        group: root
+        remote_src: false    # false=file is on Ansible controller node
+        src: sysctl.99-kubernetes.conf
+
+    - name: Reload sysctl
+      ansible.builtin.command:
+        cmd: "sysctl --system"
+      register: __control_nodes_sysctl_reload
+      changed_when: __control_nodes_sysctl_reload['rc'] != 0
+
+- name: Configure containerd CRI
+  block:
+    - name: Create containerd config file
+      ansible.builtin.copy:
+        backup: false
+        dest: /etc/containerd/config.toml
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        remote_src: false    # false=file is on Ansible controller node
+        src: containerd.config.toml
+
+    - name: Restart containerd
+      ansible.builtin.systemd_service:
+        daemon-reload: true
+        name: containerd
+        state: restarted
+        enabled: true
+
+    - name: Place crictl.yaml config file
+      ansible.builtin.copy:
+        force: true
+        owner: root
+        mode: '0644'
+        group: root
+        remote_src: false               # false=file is on Ansible controller node
+        src: crictl.yaml                # .yml will be ignored, must be .yaml
+        dest: /etc/crictl.yaml
+
+- name: Add Kubernetes deb repos
+  block:
+    - name: Install packages neded to use the k8s apt repo
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: true
+
+    - name: Add the Kubernetes apt repository
+      ansible.builtin.deb822_repository:
+        name: kubernetes
+        types: [deb]
+        uris: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_release }}/deb/"
+        suites: ["/"]
+        signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_release }}/deb/Release.key"
+        state: present
+
+- name: Install Kubernetes packages
+  block:
+    - name: Install kubelet, kubeadm, and kubectl
+      ansible.builtin.apt:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+          - cri-tools
+        state: present
+        update_cache: true
+
+    - name: Hold the k8s packages
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubeadm
+        - kubelet
+        - kubectl
+      register: __control_nodes_pkg_hold
+      until: __control_nodes_pkg_hold is succeeded
+      retries: 5
+      delay: 12
+...

@@ -79,12 +79,12 @@
         cmd: journalctl --flush
       changed_when: false
 
-- name: ls alias
+- name: Set "ll" alias for "ls" command
+  # Becuase I like it
   ansible.builtin.lineinfile:
     line: >-
       alias ll='ls -lah' 2>/dev/null
       alias l.='ls -dah .*' 2>/dev/null
-
     create: true
     dest: /etc/profile.d/ls-alias.sh
     mode: '0644'
@@ -93,4 +93,11 @@
     state: present
     # -n flag means "noexec"
     validate: 'bash -n %s'
+
+- name: Install and configure k8s basics
+  when: 
+    ('control_nodes' in group_names) or
+    ('worker_nodes' in group_names)
+  ansible.builtin.import_tasks:
+    file: k8s_nodes.yml
 ...
