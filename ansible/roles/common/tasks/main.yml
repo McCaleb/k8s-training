@@ -93,5 +93,4 @@
     state: present
     # -n flag means "noexec"
     validate: 'bash -n %s'
-
 ...
