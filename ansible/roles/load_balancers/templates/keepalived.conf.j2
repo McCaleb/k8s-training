@@ -45,7 +45,7 @@ vrrp_instance K8S_API {
     }
 
     virtual_ipaddress {
-        {{ vip }}/{{ vip_cidr }} dev {{ ansible_facts['default_ipv4']['interface'] }}
+        {{ vip_cidr }} dev {{ ansible_facts['default_ipv4']['interface'] }}
     }
 
     # Binds the script to this instance. Without it the script runs and nothing acts on the result.

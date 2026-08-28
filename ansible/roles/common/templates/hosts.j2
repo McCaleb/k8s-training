@@ -11,7 +11,7 @@ ff02::1 ip6-allnodes
 ff02::2 ip6-allrouters
 
 # API endpoint (keepalived VIP)
-{{ vip }}	{{ vip_hostname }}.{{ vip_domain }}	{{ vip_hostname }}
+{{ vip_cidr | ansible.utils.ipaddr('address') }}	{{ vip_hostname }}.{{ vip_domain }}	{{ vip_hostname }}
 
 {% for group in ['load_balancers', 'control_nodes', 'worker_nodes'] %}
 # {{ group }}

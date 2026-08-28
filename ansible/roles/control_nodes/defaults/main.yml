@@ -1,0 +1,10 @@
+---
+# defaults file for control_nodes
+control_nodes_packages:
+  - fio
+  - conntrack          # kube-proxy needs it
+  - socat              # kubectl port-forward needs it
+  - ethtool            # CNI plugins use it for interface config
+  - nftables
+  - netcat-openbsd
+  - containerd

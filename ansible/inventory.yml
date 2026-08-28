@@ -29,7 +29,17 @@ all:
         d-k8s-wn06.opnsense.lab:
           ansible_host: 172.16.1.112       
   vars:
-    vip: 172.16.1.103
-    vip_cidr: 24
+    cluster_name: dev-homelab
+     # curl https://dl.k8s.io/release/stable-1.txt
+     # curl https://dl.k8s.io/release/stable-{{ k8s_release }}.txt
+    k8s_release: 1.35
+    lan_cidr: 172.16.1.0/24
+    vip_cidr: 172.16.1.103/24
+    pod_cidr: 10.244.0.0/16
+    service_cidr: 10.96.0.0/12
     vip_hostname: d-k8s-api
     vip_domain: opnsense.lab
+    primary_control_node: d-k8s-cn01.opnsense.lab
+    tigera_operator_version:
+    create_kubeconfig_on_localhost: true
+    timezone: "America/Chicago"

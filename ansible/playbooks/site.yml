@@ -1,14 +1,26 @@
 ---
 - name: Configure kubernetes nodes
-  hosts: load_balancers
+  hosts: control_nodes
   become: true
-  vars:
+  any_errors_fatal: true
   tasks:
+    - pause:
+
     - name: Run common role
       ansible.builtin.import_role:
         name: common
 
-    - name: Run lb role
+    - name: Run load balancer role
       ansible.builtin.include_role:
         name: load_balancers
       when: "'load_balancers' in group_names"
+
+    - name: Run control plane role
+      ansible.builtin.include_role:
+        name: control_nodes
+      when: "'control_nodes' in group_names"
+
+    # - name: Run worker node role
+    #   ansible.builtin.include_role:
+    #     name: worker_nodes
+    #   when: "'worker_nodes' in group_names"
