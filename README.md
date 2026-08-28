@@ -2,6 +2,10 @@
 
 Docs and automation for building out kubernetes environment
 
+Ansible Roles
+- **[Load Balancer Ansible role](ansible/roles/control_nodes/README.md)**
+- **[Control Nodes role](ansible/roles/control_nodes/README.md)**
+
 | Role          | Name       | IPv4         | VM ID |
 | ------------- | ---------- | ------------ | ----- |
 | Load Balancer | d-k8s-lb01 | 172.16.1.101 | 1001  |
@@ -171,7 +175,7 @@ If both go down, running pods keep running. The kubelet does not need the API se
 
 Three VMs run the K8s control plane.
 
-**[Load Balancer Ansible role](ansible/roles/control_nodes/README.md)**
+**[Control Nodes role](ansible/roles/control_nodes/README.md)**
 
 - Each runs the same 4 programs as *static pods*:
   * `kube-apiserver`
