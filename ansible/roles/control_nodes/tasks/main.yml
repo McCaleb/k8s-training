@@ -30,10 +30,78 @@
       when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
 
 - name: Copy kubeconfig to home dirs
-  ansible.builtin.import_tasks:
-    file: kubeconfig.yml
+  block:
+    - name: Create .kube directory in home dir
+      ansible.builtin.file:
+        force: true
+        group: root
+        mode: '0600'
+        owner: root
+        state: directory
+        path: "/root/.kube"
 
-- name: Install Calico CNI on primary control node
-  ansible.builtin.import_tasks:
-    file: calico.yml
+    - name: Copy admin.conf to home dir
+      ansible.builtin.copy:
+        backup: false
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        remote_src: true    # true=file is on the target node
+        src: /etc/kubernetes/admin.conf
+        dest: "/root/.kube/config"
+
+- name: Install Calico
+  block:
+    - name: Place calico custom resource file
+      ansible.builtin.template:
+        dest: /root/calico-installation.yaml
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        src: calico-installation.yaml.j2
+
+    - name: Install custom resource definitions
+      ansible.builtin.command:
+        cmd: >-
+          kubectl apply --server-side
+          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/v1_crd_projectcalico_org.yaml
+      register: __control_nodes_calico_crds
+      changed_when: "'unchanged' not in __control_nodes_calico_crds['stdout']"
+
+    - name: Install Tigera operator
+      ansible.builtin.command:
+        cmd: >-
+          kubectl apply
+          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/tigera-operator.yaml
+      register: __control_nodes_calico_operator
+      changed_when: "'unchanged' not in __control_nodes_calico_operator['stdout']"
+
+    - name: Wait for the Installation CRD to be established
+      ansible.builtin.command:
+        cmd: >-
+          kubectl wait --for=condition=Established
+          crd/installations.operator.tigera.io --timeout=120s
+      changed_when: false
+
+    - name: Install Calico with resource file
+      ansible.builtin.command:
+        cmd: "kubectl apply -f /root/calico-installation.yaml"
+      register: __control_nodes_calico_install
+      changed_when: >-
+        'created' in __control_nodes_calico_install['stdout'] or
+        'configured' in __control_nodes_calico_install['stdout']
+
+    - name: Wait for the Calico status object to appear
+      ansible.builtin.command:
+        cmd: "kubectl wait --for=create tigerastatus/calico --timeout=120s"
+      changed_when: false
+
+    - name: Wait for Calico to become available
+      ansible.builtin.command:
+        cmd: >-
+          kubectl wait --for=condition=Available
+          tigerastatus/calico --timeout=300s
+      changed_when: false
 ...
