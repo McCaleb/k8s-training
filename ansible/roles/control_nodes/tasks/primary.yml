@@ -1,0 +1,92 @@
+---
+# tasks/primary.yml for 'control_nodes'
+
+- name: Determine if control plane is already up
+  ansible.builtin.command:
+    cmd: "kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw /healthz"
+  register: __control_nodes_healthz
+  changed_when: false
+  failed_when: false
+
+- name: Bootstrap primary control node
+  when: __control_nodes_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
+  block:
+    - name: Create kubeadm config file
+      ansible.builtin.template:
+        dest: /root/kubeadm-config.yaml
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        src: kubeadm-config.yaml.j2
+      
+    - name: Pull images required for setting up k8s cluster
+      ansible.builtin.command:
+        cmd: "kubeadm config images pull --config /root/kubeadm-config.yaml"
+      changed_when: true
+
+    - name: Bootstrap the primary control node
+      ansible.builtin.command:
+        cmd: >-
+          kubeadm init
+          --config /root/kubeadm-config.yaml
+          --upload-certs
+        # creates: /etc/kubernetes/admin.conf
+      changed_when: true
+
+- name: Install Calico
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  block:
+    - name: Place calico custom resource file
+      ansible.builtin.template:
+        dest: /root/calico-installation.yaml
+        force: true
+        group: root
+        mode: '0644'
+        owner: root
+        src: calico-installation.yaml.j2
+
+    - name: Install custom resource definitions
+      ansible.builtin.command:
+        cmd: >-
+          kubectl apply --server-side
+          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/v1_crd_projectcalico_org.yaml
+      register: __control_nodes_calico_crds
+      changed_when: "'unchanged' not in __control_nodes_calico_crds['stdout']"
+
+    - name: Install Tigera operator
+      ansible.builtin.command:
+        cmd: >-
+          kubectl apply
+          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/tigera-operator.yaml
+      register: __control_nodes_calico_operator
+      changed_when: "'unchanged' not in __control_nodes_calico_operator['stdout']"
+
+    - name: Wait for the Installation CRD to be established
+      ansible.builtin.command:
+        cmd: >-
+          kubectl wait --for=condition=Established
+          crd/installations.operator.tigera.io --timeout=120s
+      changed_when: false
+
+    - name: Install Calico with resource file
+      ansible.builtin.command:
+        cmd: "kubectl apply -f /root/calico-installation.yaml"
+      register: __control_nodes_calico_install
+      changed_when: >-
+        'created' in __control_nodes_calico_install['stdout'] or
+        'configured' in __control_nodes_calico_install['stdout']
+
+    - name: Wait for the Calico status object to appear
+      ansible.builtin.command:
+        cmd: "kubectl wait --for=create tigerastatus/calico --timeout=120s"
+      changed_when: false
+
+    - name: Wait for Calico to become available
+      ansible.builtin.command:
+        cmd: >-
+          kubectl wait --for=condition=Available
+          tigerastatus/calico --timeout=300s
+      changed_when: false
+...

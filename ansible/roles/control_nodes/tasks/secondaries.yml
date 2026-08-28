@@ -1,0 +1,43 @@
+---
+# # tasks/secondaries.yml for 'control_nodes'
+
+- name: Check whether this node has already joined
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: __control_nodes_kubelet_conf
+
+- name: Generate join credentials on the primary control node
+  delegate_to: "{{ primary_control_node }}"
+  run_once: true
+  no_log: true
+  block:
+    - name: Generate a certificate key
+      ansible.builtin.command:
+        cmd: "kubeadm certs certificate-key"
+      register: __control_nodes_cert_key
+      changed_when: false
+
+    - name: Upload the control plane certificates
+      ansible.builtin.command:
+        cmd: >-
+          kubeadm init phase upload-certs --upload-certs
+          --certificate-key {{ __control_nodes_cert_key['stdout'] | trim }}
+      changed_when: true
+
+    - name: Generate a join command
+      ansible.builtin.command:
+        cmd: "kubeadm token create --print-join-command"
+      register: __control_nodes_join_command
+      changed_when: true
+
+- name: Join this node to the control plane
+  ansible.builtin.command:
+    cmd: >-
+      {{ __control_nodes_join_command['stdout'] | trim }}
+      --control-plane
+      --certificate-key {{ __control_nodes_cert_key['stdout'] | trim }}
+      --apiserver-advertise-address {{ ansible_host }}
+  when: not __control_nodes_kubelet_conf['stat']['exists']
+  throttle: 1
+  changed_when: true
+...

@@ -1,41 +1,22 @@
 ---
+# tasks/main.yml for 'control_nodes'
 
-- name: Pull images and bootstrap primary control node
-  block:
-    - name: Determine if control plane is already up
-      ansible.builtin.command:
-        cmd: "kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw /healthz"
-      register: control_plane_healthz
-      changed_when: false
-      failed_when: false
+- name: Configure and bootstrap primary control node
+  when: inventory_hostname == primary_control_node
+  ansible.builtin.import_tasks:
+    file: primary.yml
 
-    - name: Create kubeadm config file
-      ansible.builtin.template:
-        dest: /root/kubeadm-config.yaml
-        force: true
-        group: root
-        mode: '0644'
-        owner: root
-        src: kubeadm-config.yaml.j2
-      when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
-
-    - name: Bootstrap the primary Kubernetes control node
-      ansible.builtin.command:
-        cmd: >-
-          kubeadm init
-          --config /root/kubeadm-config.yaml
-          --upload-certs
-        # creates: /etc/kubernetes/admin.conf
-      changed_when: true
-      when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
+- name: Join secondary control nodes
+  when: inventory_hostname != primary_control_node
+  ansible.builtin.include_tasks:          # include_tasks is intentional here, due to "delegate_to" and "run_once" combo within.
+    file: secondaries.yml
 
 - name: Copy kubeconfig to home dirs
   block:
     - name: Create .kube directory in home dir
       ansible.builtin.file:
-        force: true
         group: root
-        mode: '0600'
+        mode: '0700'
         owner: root
         state: directory
         path: "/root/.kube"
@@ -45,63 +26,9 @@
         backup: false
         force: true
         group: root
-        mode: '0644'
+        mode: '0600'
         owner: root
         remote_src: true    # true=file is on the target node
         src: /etc/kubernetes/admin.conf
         dest: "/root/.kube/config"
-
-- name: Install Calico
-  block:
-    - name: Place calico custom resource file
-      ansible.builtin.template:
-        dest: /root/calico-installation.yaml
-        force: true
-        group: root
-        mode: '0644'
-        owner: root
-        src: calico-installation.yaml.j2
-
-    - name: Install custom resource definitions
-      ansible.builtin.command:
-        cmd: >-
-          kubectl apply --server-side
-          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/v1_crd_projectcalico_org.yaml
-      register: __control_nodes_calico_crds
-      changed_when: "'unchanged' not in __control_nodes_calico_crds['stdout']"
-
-    - name: Install Tigera operator
-      ansible.builtin.command:
-        cmd: >-
-          kubectl apply
-          -f https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/tigera-operator.yaml
-      register: __control_nodes_calico_operator
-      changed_when: "'unchanged' not in __control_nodes_calico_operator['stdout']"
-
-    - name: Wait for the Installation CRD to be established
-      ansible.builtin.command:
-        cmd: >-
-          kubectl wait --for=condition=Established
-          crd/installations.operator.tigera.io --timeout=120s
-      changed_when: false
-
-    - name: Install Calico with resource file
-      ansible.builtin.command:
-        cmd: "kubectl apply -f /root/calico-installation.yaml"
-      register: __control_nodes_calico_install
-      changed_when: >-
-        'created' in __control_nodes_calico_install['stdout'] or
-        'configured' in __control_nodes_calico_install['stdout']
-
-    - name: Wait for the Calico status object to appear
-      ansible.builtin.command:
-        cmd: "kubectl wait --for=create tigerastatus/calico --timeout=120s"
-      changed_when: false
-
-    - name: Wait for Calico to become available
-      ansible.builtin.command:
-        cmd: >-
-          kubectl wait --for=condition=Available
-          tigerastatus/calico --timeout=300s
-      changed_when: false
 ...
