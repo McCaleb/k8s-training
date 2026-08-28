@@ -1,4 +1,7 @@
 # k8s-training
+
+**[Ansible role](ansible/control_nodes)**
+
 Docs and automation for building out kubernetes environment
 
 | Role          | Name       | IPv4         | VM ID |
