@@ -1,0 +1,24 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for worker_nodes
+- name: Pull images on NON-primary control nodes
+  when: inventory_hostname != primary_control_node
+  block:
+    - name: Pull images required for setting up k8s cluster
+      ansible.builtin.command:
+        cmd: "kubeadm config images pull"
+      changed_when: true
+
+# - name: Join cn02
+#   block:
+#     - name: Join cn02
+#       anisble.builtin.command:
+#         cmd: >-
+#           kubeadm join d-k8s-api.opnsense.lab:6443 \
+#             --token <token> \
+#             --discovery-token-ca-cert-hash sha256:<hash> \
+#             --control-plane \
+#             --certificate-key <key> \
+#             --apiserver-advertise-address 172.16.1.105
+
+# Look at this section: "11. Join cn02 and cn03". It sucks. Please improve and expand it. Then, give me the new section (*not* the entire document).  Where do I get the token? Maybe I should use a "JoinConfiguration" file, since I'm using Ansible?
