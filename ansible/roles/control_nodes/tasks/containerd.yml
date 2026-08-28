@@ -1,0 +1,19 @@
+---
+- name: Create containerd config file
+  ansible.builtin.copy:
+    backup: false
+    dest: /etc/containerd/config.toml
+    force: true
+    group: root
+    mode: '0644'
+    owner: root
+    remote_src: false    # false=file is on Ansible controller node
+    src: containerd.config.toml
+
+- name: Restart containerd
+  ansible.builtin.systemd_service:
+    daemon-reload: true
+    name: containerd
+    state: restarted
+    enabled: true
+...

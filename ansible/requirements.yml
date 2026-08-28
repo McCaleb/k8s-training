@@ -10,3 +10,5 @@ collections:
   - name: community.general
 
   - name: ansible.utils
+
+  # - name: kubernetes.core

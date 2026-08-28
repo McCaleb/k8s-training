@@ -9,7 +9,7 @@ nodeRegistration:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-clusterName: homelab
+clusterName: dev-homelab
 controlPlaneEndpoint: "{{ vip_hostname }}.{{ vip_domain }}:6443"
 apiServer:
   certSANs:

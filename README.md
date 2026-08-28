@@ -256,3 +256,8 @@ fio --rw=write --ioengine=sync \
 
 - Check out the 99th percentile figure on the fsync/fdatasync/sync_file_range line. etcd's hardware guidance sets the target below 10 ms. Consumer NVMe drives usually lands near 1 ms.
 
+## CNI (Calico)
+
+- Calico needs to manage the interfaces, so NetworkManager needs to be [configured such that is does not interfere](https://docs.tigera.io/calico/latest/operations/troubleshoot/troubleshooting#configure-networkmanager).
+
+[Calico Docs](https://docs.tigera.io/calico/latest/about/)

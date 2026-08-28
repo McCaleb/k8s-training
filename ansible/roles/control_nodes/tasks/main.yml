@@ -4,70 +4,12 @@
     file: prereqs.yml
 
 - name: Configure containerd
-  block:
-    - name: Create containerd config file
-      ansible.builtin.copy:
-        backup: false
-        dest: /etc/containerd/config.toml
-        force: true
-        group: root
-        mode: '0644'
-        owner: root
-        remote_src: false    # false=file is on Ansible controller node
-        src: containerd.config.toml
+  ansible.builtin.import_tasks:
+    file: containerd.yml
 
-    - name: Restart containerd
-      ansible.builtin.systemd_service:
-        daemon-reload: true
-        name: containerd
-        state: restarted
-        enabled: true
-
-- name: Add k8s apt repository
-  block:
-    - name: Install packages neded to use the k8s apt repo
-      ansible.builtin.apt:
-        name:
-          - apt-transport-https
-          - ca-certificates
-          - curl
-          - gnupg
-        state: present
-        update_cache: true
-
-    - name: Add the Kubernetes apt repository
-      ansible.builtin.deb822_repository:
-        name: kubernetes
-        types: [deb]
-        uris: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_release }}/deb/"
-        suites: ["/"]
-        signed_by: "https://pkgs.k8s.io/core:/stable:/v{{ k8s_release }}/deb/Release.key"
-        state: present
-
-    - name: Install k8s packages
-      block:
-        - name: Install kubelet, kubeadm, and kubectl
-          ansible.builtin.apt:
-            name:
-              - kubelet
-              - kubeadm
-              - kubectl
-              - cri-tools
-            state: present
-            update_cache: true
-
-        - name: Hold the Kubernetes packages
-          ansible.builtin.dpkg_selections:
-            name: "{{ item }}"
-            selection: hold
-          loop:
-            - kubeadm
-            - kubelet
-            - kubectl
-          register: __control_nodes_pkg_hold
-          until: __control_nodes_pkg_hold is succeeded
-          retries: 5
-          delay: 12
+- name: Configure k8s repo and install k8s packages
+  ansible.builtin.import_tasks:
+    file: repo.yml
 
 - name: Place crictl.yaml config file
   ansible.builtin.copy:
@@ -79,7 +21,7 @@
     src: crictl.yaml                # .yml will be ignored, must be .yaml
     dest: /etc/crictl.yaml
 
-- name: Pull images on NON-primary control node
+- name: Pull images on NON-primary control nodes
   when: inventory_hostname != primary_control_node
   block:
     - name: Pull images required for setting up k8s cluster
@@ -90,7 +32,6 @@
 - name: Pull images and bootstrap primary control node
   when: inventory_hostname == primary_control_node
   block:
-
     - name: Determine if control plane is already up
       ansible.builtin.command:
         cmd: "kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw /healthz"
@@ -118,51 +59,25 @@
       changed_when: true
       when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
 
-- name: Configure CNI on primary control node
+- name: Install Calico CNI on primary control node
   when: inventory_hostname == primary_control_node
   ansible.builtin.import_tasks:
-    file: cni.yml
+    file: calico.yml
 
-- name: Create kubeconfig on control nodes
-  block:
-    - name: Create .kube directory in home dir
-      ansible.builtin.file:
-        force: true
-        group: root
-        mode: '0755'
-        owner: root
-        state: directory
-        path: "/root/.kube"
+- name: Copy kubeconfig to home dirs
+  ansible.builtin.import_tasks:
+    file: kubeconfig.yml
 
-    - name: Copy admin.conf to home dir
-      ansible.builtin.copy:
-        backup: false
-        force: true
-        group: root
-        mode: '0644'
-        owner: root
-        remote_src: true    # true=file is on the target node
-        src: /etc/kubernetes/admin.conf
-        dest: "/root/.kube/config_{{ cluster_name }}"
+# - name: Join cn02
+#   block:
+#     - name: Join cn02
+#       anisble.builtin.command:
+#         cmd: >-
+#           kubeadm join d-k8s-api.opnsense.lab:6443 \
+#             --token <token> \
+#             --discovery-token-ca-cert-hash sha256:<hash> \
+#             --control-plane \
+#             --certificate-key <key> \
+#             --apiserver-advertise-address 172.16.1.105
 
-- name: Create kubeconfig on localhost
-  when: create_kubeconfig_on_localhost
-  block:
-    - name: Create .kube directory in home dir
-      ansible.builtin.file:
-        force: true
-        group: root
-        mode: '0755'
-        owner: root
-        state: directory
-        path: "/home/{{ ansible_user }}/.kube"
-      delegate_to: localhost
-
-    - name: Copy admin.conf to home dir
-      ansible.builtin.fetch:
-        fail_on_missing: true
-        flat: true
-        src: /etc/kubernetes/admin.conf
-        dest: "/home/{{ ansible_user }}/.kube/config_{{ cluster_name}}"
-      delegate_to: localhost
-...
+# Look at this section: "11. Join cn02 and cn03". It sucks. Please improve and expand it. Then, give me the new section (*not* the entire document).  Where do I get the token? Maybe I should use a "JoinConfiguration" file, since I'm using Ansible?
