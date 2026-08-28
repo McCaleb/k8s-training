@@ -1,7 +1,5 @@
 # k8s-training
 
-**[Ansible role](ansible/control_nodes)**
-
 Docs and automation for building out kubernetes environment
 
 | Role          | Name       | IPv4         | VM ID |
@@ -56,6 +54,8 @@ Docs and automation for building out kubernetes environment
 ---
 
 # 1. Load Balancers
+
+**[Load Balancer Ansible role](ansible/roles/load_balancers/README.md)**
 
 - The Kubernetes API server runs on 3 control plane nodes. 
 - Clients need *one* address to reach it, and that address has to survive the loss of any single system. 
