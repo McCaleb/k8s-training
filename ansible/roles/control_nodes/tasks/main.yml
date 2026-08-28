@@ -1,36 +1,6 @@
 ---
-- name: Configure control node prerequisites
-  ansible.builtin.import_tasks:
-    file: prereqs.yml
-
-- name: Configure containerd
-  ansible.builtin.import_tasks:
-    file: containerd.yml
-
-- name: Configure k8s repo and install k8s packages
-  ansible.builtin.import_tasks:
-    file: repo.yml
-
-- name: Place crictl.yaml config file
-  ansible.builtin.copy:
-    force: true
-    owner: root
-    mode: '0644'
-    group: root
-    remote_src: false               # false=file is on Ansible controller node
-    src: crictl.yaml                # .yml will be ignored, must be .yaml
-    dest: /etc/crictl.yaml
-
-- name: Pull images on NON-primary control nodes
-  when: inventory_hostname != primary_control_node
-  block:
-    - name: Pull images required for setting up k8s cluster
-      ansible.builtin.command:
-        cmd: "kubeadm config images pull"
-      changed_when: true
 
 - name: Pull images and bootstrap primary control node
-  when: inventory_hostname == primary_control_node
   block:
     - name: Determine if control plane is already up
       ansible.builtin.command:
@@ -60,12 +30,10 @@
       when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
 
 - name: Copy kubeconfig to home dirs
-  when: inventory_hostname == primary_control_node
   ansible.builtin.import_tasks:
     file: kubeconfig.yml
 
 - name: Install Calico CNI on primary control node
-  when: inventory_hostname == primary_control_node
   ansible.builtin.import_tasks:
     file: calico.yml
 ...

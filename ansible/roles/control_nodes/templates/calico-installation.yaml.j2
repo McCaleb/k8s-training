@@ -14,4 +14,10 @@ spec:
         nodeSelector: all()
     nodeAddressAutodetectionV4:
       kubernetes: NodeInternalIP
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
 ...
