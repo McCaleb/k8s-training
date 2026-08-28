@@ -50,13 +50,9 @@ Docs and automation for building out kubernetes environment
 | kubectl            | `kubectl version --client` | pkgs.k8s.io repo path | No      |
 | Tigera operator    |  URL in manifest           | Ansible variable      | **Yes** |
 
-# ProxMox
+---
 
-## Affinity
-
-
-
-# API server load balancers
+# 1. Load Balancers
 
 - The Kubernetes API server runs on 3 control plane nodes. 
 - Clients need *one* address to reach it, and that address has to survive the loss of any single system. 
@@ -166,42 +162,9 @@ If both go down, running pods keep running. The kubelet does not need the API se
   - Returns the node to rotation. 
   - Runtime state does not survive a reload, so a reload during maintenance will silently put a disabled node back in rotation.
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Control Nodes
+# 2. Control Nodes
 
 Three VMs run the K8s control plane.
 
