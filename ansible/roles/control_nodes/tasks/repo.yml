@@ -40,4 +40,4 @@
       register: __control_nodes_pkg_hold
       until: __control_nodes_pkg_hold is succeeded
       retries: 5
-    delay: 12
+      delay: 12

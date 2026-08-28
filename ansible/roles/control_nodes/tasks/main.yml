@@ -50,34 +50,22 @@
       when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
 
     - name: Bootstrap the primary Kubernetes control node
-      ansible.builtin.command:        
+      ansible.builtin.command:
         cmd: >-
           kubeadm init
           --config /root/kubeadm-config.yaml
           --upload-certs
-        # creates: /etc/kubernetes/admin.conf     
+        # creates: /etc/kubernetes/admin.conf
       changed_when: true
       when: control_plane_healthz['rc'] != 0    # Intent: prevent config command from being re-run on a working control node, which would fail.
+
+- name: Copy kubeconfig to home dirs
+  when: inventory_hostname == primary_control_node
+  ansible.builtin.import_tasks:
+    file: kubeconfig.yml
 
 - name: Install Calico CNI on primary control node
   when: inventory_hostname == primary_control_node
   ansible.builtin.import_tasks:
     file: calico.yml
-
-- name: Copy kubeconfig to home dirs
-  ansible.builtin.import_tasks:
-    file: kubeconfig.yml
-
-# - name: Join cn02
-#   block:
-#     - name: Join cn02
-#       anisble.builtin.command:
-#         cmd: >-
-#           kubeadm join d-k8s-api.opnsense.lab:6443 \
-#             --token <token> \
-#             --discovery-token-ca-cert-hash sha256:<hash> \
-#             --control-plane \
-#             --certificate-key <key> \
-#             --apiserver-advertise-address 172.16.1.105
-
-# Look at this section: "11. Join cn02 and cn03". It sucks. Please improve and expand it. Then, give me the new section (*not* the entire document).  Where do I get the token? Maybe I should use a "JoinConfiguration" file, since I'm using Ansible?
+...
