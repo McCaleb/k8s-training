@@ -19,7 +19,7 @@
         mode: '0644'
         owner: root
         src: kubeadm-config.yaml.j2
-      
+
     - name: Pull images required for setting up k8s cluster
       ansible.builtin.command:
         cmd: "kubeadm config images pull --config /root/kubeadm-config.yaml"

@@ -1,10 +1,16 @@
 ---
 - name: Configure kubernetes nodes
-  hosts: control_nodes
+  hosts: d-k8s-cn01.opnsense.lab  
+  # control_nodes
   become: true
   any_errors_fatal: true
   tasks:
-    - pause:
+    - name: Update Debian systems
+      ansible.builtin.import_role:
+        name: debian_update
+      vars: 
+        debian_update_reboot: true
+        debian_update_restart_services: true
 
     - name: Run common role
       ansible.builtin.import_role:

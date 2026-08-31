@@ -4,6 +4,8 @@
 common_packages:
   - tree
   - vim
+  - apt-file
+  - needrestart
 
 ## Time
 common_ntp_sources:

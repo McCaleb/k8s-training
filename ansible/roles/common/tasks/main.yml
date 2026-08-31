@@ -22,13 +22,6 @@
     update_cache: true
   when: common_packages | default([]) | length > 0
 
-- name: Apply updates
-  ansible.builtin.apt:
-    update_cache: true
-    name: "*"
-    state: latest
-    clean: yes
-
 - name: Configure chrony
   ansible.builtin.import_tasks:
     file: chrony.yml
