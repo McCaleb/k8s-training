@@ -1,0 +1,56 @@
+---
+# Patch a Debian host, then reboot for a new kernel or restart stale services.
+
+- name: Install needrestart
+  ansible.builtin.apt:
+    name: needrestart
+    state: present
+    update_cache: true
+
+- name: Stop needrestart prompting, and keep it away from sshd
+  ansible.builtin.copy:
+    dest: /etc/needrestart/conf.d/00-ansible.conf
+    content: |
+      # Managed by Ansible. Perl syntax parse errors will break apt.
+      $nrconf{restart} = 'l';
+      $nrconf{sendnotify} = 0;
+      $nrconf{override_rc}{qr(^ssh)} = 0;
+    mode: '0644'
+    validate: perl -c %s
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: dist
+    autoremove: true
+    lock_timeout: 300
+  environment:
+    NEEDRESTART_SUSPEND: "1"
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Check what the upgrade left pending
+  ansible.builtin.command:
+    cmd: "/usr/sbin/needrestart -b"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: debian_update_nr
+  changed_when: false
+
+- name: Reboot for the new kernel
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+  register: debian_update_rebooted
+  when:
+    - debian_update_reboot | bool
+    - "debian_update_nr['stdout'] is search('^NEEDRESTART-KSTA: [23]$', multiline=True)"
+
+- name: Restart stale services (if we did not just reboot)
+  ansible.builtin.command:
+    cmd: "/usr/sbin/needrestart -r a"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  changed_when: true
+  when:
+    - debian_update_restart_services | bool
+    - debian_update_rebooted is skipped
+    - "debian_update_nr['stdout'] is search('^NEEDRESTART-SVC:', multiline=True)"
+...

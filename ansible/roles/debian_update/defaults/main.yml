@@ -1,0 +1,5 @@
+#SPDX-License-Identifier: MIT-0
+---
+debian_update_reboot: false
+debian_update_restart_services: true
+...
