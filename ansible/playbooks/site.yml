@@ -1,14 +1,15 @@
 ---
 - name: Configure kubernetes nodes
-  hosts: d-k8s-cn01.opnsense.lab  
+  hosts: d-k8s-cn01.opnsense.lab
   # control_nodes
   become: true
   any_errors_fatal: true
   tasks:
+
     - name: Update Debian systems
       ansible.builtin.import_role:
         name: debian_update
-      vars: 
+      vars:
         debian_update_reboot: true
         debian_update_restart_services: true
 
@@ -26,7 +27,7 @@
         name: control_nodes
       when: "'control_nodes' in group_names"
 
-    # - name: Run worker node role
-    #   ansible.builtin.include_role:
-    #     name: worker_nodes
-    #   when: "'worker_nodes' in group_names"
+    - name: Run worker node role
+      ansible.builtin.include_role:
+        name: worker_nodes
+      when: "'worker_nodes' in group_names"

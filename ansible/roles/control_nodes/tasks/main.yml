@@ -11,7 +11,7 @@
   ansible.builtin.include_tasks:          # include_tasks is intentional here, due to "delegate_to" and "run_once" combo within.
     file: secondaries.yml
 
-- name: Copy kubeconfig to home dirs
+- name: Copy kubeconfig to control node home dirs
   block:
     - name: Create .kube directory in home dir
       ansible.builtin.file:
@@ -31,4 +31,84 @@
         remote_src: true    # true=file is on the target node
         src: /etc/kubernetes/admin.conf
         dest: "/root/.kube/config"
+
+
+- name: Retrieve kubeconfig for workstation use
+  when: 
+    - inventory_hostname == primary_control_node
+    - control_nodes_copy_kubeconfig_to_localhost | default(false)
+  block:
+    - name: Create .kube directory on the workstation
+      ansible.builtin.file:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube"
+        state: directory
+        mode: '0700'
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch admin.conf from the primary control plane node
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube/config"
+        flat: true
+
+    - name: Restrict kubeconfig permissions on the workstation
+      ansible.builtin.file:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube/config"
+        state: file
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+
+- name: Copy kubeconfig to workstation
+
+  delegate_to: localhost
+  become: false
+  block:
+    - name: Create .kube directory in home dir
+      ansible.builtin.file:
+        group: root
+        mode: '0700'
+        owner: root
+        state: directory
+        path: "/root/.kube"
+
+    - name: Copy admin.conf to home dir
+      ansible.builtin.copy:
+        backup: false
+        force: true
+        group: root
+        mode: '0600'
+        owner: root
+        remote_src: true    # true=file is on the target node
+        src: /etc/kubernetes/admin.conf
+        dest: "/root/.kube/config"
+
+- name: Retrieve kubeconfig for workstation use
+  when: 
+    - inventory_hostname == primary_control_node
+    - control_nodes_copy_kubeconfig_to_localhost | default(false)
+  block:
+    - name: Create .kube directory on the workstation
+      ansible.builtin.file:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube"
+        state: directory
+        mode: '0700'
+      delegate_to: localhost
+      become: false
+
+    - name: Fetch admin.conf from the primary control plane node
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube/config"
+        flat: true
+
+    - name: Restrict kubeconfig permissions on the workstation
+      ansible.builtin.file:
+        path: "{{ lookup('ansible.builtin.env', 'HOME') }}/.kube/config"
+        state: file
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+
 ...
