@@ -14,12 +14,12 @@ Ansible Roles
 | Control Node  | d-k8s-cn01 | 172.16.1.104 | 1004  |
 | Control Node  | d-k8s-cn02 | 172.16.1.105 | 1005  |
 | Control Node  | d-k8s-cn03 | 172.16.1.106 | 1006  |
-| Worker Node   | d-k8s-wk01 | 172.16.1.107 | 1007  |
-| Worker Node   | d-k8s-wk02 | 172.16.1.108 | 1008  |
-| Worker Node   | d-k8s-wk03 | 172.16.1.109 | 1009  |
-| Worker Node   | d-k8s-wk04 | 172.16.1.110 | 1010  |
-| Worker Node   | d-k8s-wk05 | 172.16.1.111 | 1011  |
-| Worker Node   | d-k8s-wk06 | 172.16.1.112 | 1012  |
+| Worker Node   | d-k8s-wn01 | 172.16.1.107 | 1007  |
+| Worker Node   | d-k8s-wn02 | 172.16.1.108 | 1008  |
+| Worker Node   | d-k8s-wn03 | 172.16.1.109 | 1009  |
+| Worker Node   | d-k8s-wn04 | 172.16.1.110 | 1010  |
+| Worker Node   | d-k8s-wn05 | 172.16.1.111 | 1011  |
+| Worker Node   | d-k8s-wn06 | 172.16.1.112 | 1012  |
 
 | Item                   | Value                                            | 
 | ---------------------- | ------------------------------------------------ |
