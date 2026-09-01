@@ -3,6 +3,7 @@
 
 - name: Install packages
   ansible.builtin.apt:
+    state: present
     name:
       - haproxy
       - keepalived

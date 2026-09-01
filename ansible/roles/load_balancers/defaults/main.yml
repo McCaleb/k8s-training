@@ -1,3 +1,11 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# defaults file for load_balancers
+# defaults for load_balancers
+load_balancers_keepalived:
+  virtual_router_id: 81
+  auth_pass: QXcNkhkX
+  elect_priority: "{{ ansible_host.split('.')[-1] }}"
+
+load_balancers_haproxy:
+  stats_listener_port: 8404
+  api_server_port: 6443

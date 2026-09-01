@@ -33,8 +33,8 @@ defaults
     default-server inter 3s fall 3 rise 2           
 
 frontend k8s_apiserver
-    # wildcard, so HAProxy starts without holding the VIP
-    bind *:6443                                     
+    # wildcard, so HAProxy starts without holding the vIP
+    bind *:{{ load_balancers_haproxy['api_server_port'] }}                                     
     default_backend k8s_controlplane
 
 backend k8s_controlplane
@@ -44,12 +44,12 @@ backend k8s_controlplane
     http-check expect status 200                    
     balance leastconn
 {% for host in groups['control_nodes'] %}
-    server {{ host.split('.')[0] }} {{ hostvars[host].ansible_host }}:6443 check check-ssl verify none
+    server {{ host.split('.')[0] }} {{ hostvars[host].ansible_host }}:{{ load_balancers_haproxy['api_server_port'] }} check check-ssl verify none
 {% endfor %}
 
 frontend stats
     # separate listener: stats needs mode http
-    bind {{ ansible_host }}:8404                                     
+    bind {{ ansible_host }}:{{ load_balancers_haproxy['stats_listener_port'] }}                                      
     mode http
     # overrides the inherited tcplog
     option httplog       

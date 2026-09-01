@@ -25,9 +25,9 @@ vrrp_instance K8S_API {
     state           BACKUP
     interface       {{ ansible_facts['default_ipv4']['interface'] }}
     # The VRID. Must be identical on both nodes and unique on the layer 2 segment.
-    virtual_router_id 81
+    virtual_router_id {{ load_balancers_keepalived['virtual_router_id'] }}
     # Higher wins. Range 1 to 254.
-    priority        {{ ansible_host.split('.')[-1] }}
+    priority        {{ load_balancers_keepalived['elect_priority'] }}
     advert_int      1
     nopreempt
 
@@ -41,7 +41,7 @@ vrrp_instance K8S_API {
     authentication {
         # group id, not a credential. Prevents stray keepalived from joining.
         auth_type PASS
-        auth_pass QXcNkhkX
+        auth_pass {{ load_balancers_keepalived['auth_pass'] }}
     }
 
     virtual_ipaddress {
