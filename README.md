@@ -2,11 +2,16 @@
 
 Docs and automation for building out kubernetes environment
 
+OpenTofu/Terraform
+- **[Build Cluster VMs](opentofu/README.md)**
+
 Ansible Roles
-- **[Basic Node Configuration](ansible/roles/common/README.md)**
-- **[Configure Load Balancers](ansible/roles/load_balancers/README.md)**
-- **[Bootstrap Control Nodes](ansible/roles/control_nodes/README.md)**
-- **[Add Worker Nodes](ansible/roles/worker_nodes/README.md)**
+- **[Configure Load Balancers](ansible/roles/control_nodes/README.md)**
+- **[Update Debian Nodes](ansible/roles/control_nodes/README.md)**
+- **[Load Balancer Ansible role](ansible/roles/control_nodes/README.md)**
+- **[Control Nodes role](ansible/roles/control_nodes/README.md)**
+- **[Load Balancer Ansible role](ansible/roles/control_nodes/README.md)**
+- **[Control Nodes role](ansible/roles/control_nodes/README.md)**
 
 | Role          | Name       | IPv4         | VM ID |
 | ------------- | ---------- | ------------ | ----- |
