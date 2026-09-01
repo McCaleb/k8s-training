@@ -1,5 +1,5 @@
 ---
-# tasks/main.yml for 'control_nodes'
+# control_nodes: split primary and secondary setup, then place kubeconfigs
 
 - name: Configure and bootstrap primary control node
   when: inventory_hostname == primary_control_node
@@ -34,7 +34,7 @@
 
 
 - name: Retrieve kubeconfig for workstation use
-  when: 
+  when:
     - inventory_hostname == primary_control_node
     - control_nodes_copy_kubeconfig_to_localhost | default(false)
   block:
@@ -59,33 +59,9 @@
         mode: '0600'
       delegate_to: localhost
       become: false
-
-- name: Copy kubeconfig to workstation
-
-  delegate_to: localhost
-  become: false
-  block:
-    - name: Create .kube directory in home dir
-      ansible.builtin.file:
-        group: root
-        mode: '0700'
-        owner: root
-        state: directory
-        path: "/root/.kube"
-
-    - name: Copy admin.conf to home dir
-      ansible.builtin.copy:
-        backup: false
-        force: true
-        group: root
-        mode: '0600'
-        owner: root
-        remote_src: true    # true=file is on the target node
-        src: /etc/kubernetes/admin.conf
-        dest: "/root/.kube/config"
 
 - name: Retrieve kubeconfig for workstation use
-  when: 
+  when:
     - inventory_hostname == primary_control_node
     - control_nodes_copy_kubeconfig_to_localhost | default(false)
   block:
@@ -110,5 +86,4 @@
         mode: '0600'
       delegate_to: localhost
       become: false
-
 ...

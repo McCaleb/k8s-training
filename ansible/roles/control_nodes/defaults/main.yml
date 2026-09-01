@@ -1,4 +1,6 @@
 ---
-# defaults file for control_nodes
+# control_nodes: default variables
 
 control_nodes_copy_kubeconfig_to_localhost: false
+control_nodes_join_token_ttl: 5m
+...

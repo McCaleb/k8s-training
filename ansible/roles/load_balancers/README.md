@@ -1,130 +1,118 @@
 # Ansible Role: load_balancers
 
-- Builds a endpoints for the Kubernetes API servers.
-- HAProxy forwards TCP connections on port 6443 to whichever control plane nodes are healthy
-- keepalived floats a virtual IP (vIP) between them.
-- Written for Debian. 
-  * It installs with `apt` and assumes Debian's HAProxy packaging, so it needs work before it will run on EL (Rocky, AlmaLinux, etc).
+Builds a pair of nodes that serve as an endpoint for the Kubernetes API server. 
+
+HAProxy forwards TCP connections on 6443 to whichever control plane nodes are healthy, and keepalived floats a virtual IP (vIP) between the two load balancers.
+
+Written for Debian. It installs with `apt` and assumes Debian's HAProxy packaging, so it needs work before it will run on EL.
 
 ## Requirements
 
-- Debian (a Debian derivative like Ubuntu may work).
-- Two hosts in a `load_balancers` inventory group, sharing a layer 2 segment with the vIP. 
+- Debian (maybe a derivative like Ubuntu).
+- `become: true`.
+- Two hosts in a `load_balancers` inventory group
+  * These need to share a layer 2 segment with the vIP. 
   * VRRP advertisements are unicast, but the vIP still has to live on a subnet both nodes are attached to.
-- A `control_nodes` Ansible group. Its members become the HAProxy backend servers.
+- A `control_nodes` group. Its members become the HAProxy backends.
 - VRRP (IP protocol 112) permitted between the two load balancers, and TCP 6443 reachable from anything that talks to the cluster.
 
 ## Role Variables
 
-Two sources: what only the inventory can know, and the role's own defaults.
+### From Inventory
 
-### From inventory
+From in `group_vars/all.yml` (except `ansible_host`, which is in the inventory).
 
-| Variable                                       | Example           | Used for |
-| ---------------------------------------------- | ----------------- | ---------------------------- |
-| `vip_cidr`                                     | `172.16.1.103/24` | Ffloating vIP, with prefix   |
-| `ansible_host` on each `load_balancers` member | `172.16.1.101`    | VRRP unicast source and peer |
-| `ansible_host` on each `control_nodes` member  | `172.16.1.104`    | Backend server address       |
+| Variable                                       | Example           | Use                           |
+| ---------------------------------------------- | ----------------- | ----------------------------- |
+| `vip_cidr`                                     | `172.16.1.103/24` | The floating vIP, with prefix |
+| `ansible_host` on each `load_balancers` member | `172.16.1.101`    | VRRP unicast source and peer  |
+| `ansible_host` on each `control_nodes` member  | `172.16.1.104`    | Backend server address        |
 
-### Priority comes from the address
+### Role Defaults
 
-- *Important*: `elect_priority` defaults to the last octet of the node's `ansible_host`:
+From `defaults/main.yml` (as two dicts).
 
-    `elect_priority: "{{ ansible_host.split('.')[-1] }}"`
-- Not the greatest idea, perhaps, but it works. Set it per host in `host_vars` if you would rather decide the election yourself.
-- With `.101` and `.102`, lb02 outranks lb01 and takes the vIP on a cold start where both nodes boot together. 
-- Both nodes start in `BACKUP` and `nopreempt` is set. 
-- A node that comes back after an outage shouldn't claim the vIP from a healthy peer. It should wait for the peer to fail.
+| Variable                                      | Default                      | Use                                             |
+| --------------------------------------------- | ---------------------------- | ----------------------------------------------- |
+| `load_balancers_keepalived.virtual_router_id` | `81`                         | The VRID.                                       |
+| `load_balancers_keepalived.auth_pass`         | set in `defaults/main.yml`   | VRRP group id (not a credential)                |
+| `load_balancers_keepalived.elect_priority`    | last octet of `ansible_host` | Election priority, 1 to 254. Higher wins.       |
+| `load_balancers_haproxy.api_server_port`      | `6443`                       | Port for frontend bind and the backend servers  |
+| `load_balancers_haproxy.stats_listener_port`  | `8404`                       | Stats listener, bound to the node's own address |
 
-### Role defaults
+### Election Priority
 
-- In `defaults/main.yml`, as two dicts.
+`elect_priority` defaults to the last octet of the node's address:
 
-| Variable                                      | Default                      | Used for                                          |
-| --------------------------------------------- | ---------------------------- | --------------------------------------------------- |
-| `load_balancers_keepalived.virtual_router_id` | `81`                         | The VRID. Needs to be unique on layer 2 segment     |
-| `load_balancers_keepalived.auth_pass`         | set in `defaults/main.yml`   | VRRP group id (not a credential).                   |
-| `load_balancers_keepalived.elect_priority`    | last octet of `ansible_host` | Election priority, 1 to 254. Higher wins            |
-| `load_balancers_haproxy.api_server_port`      | `6443`                       | Port `k8s_apiserver` frontend binds                 |
-| `load_balancers_haproxy.stats_listener_port`  | `8404`                       | Port stats listener binds to, on node's own address |
+  ```jinja
+  elect_priority: "{{ ansible_host.split('.')[-1] }}"
+  ```
 
-- Heads up on `api_server_port`: it sets the frontend *and* backend `bind` port.
+- Maybe the greatest idea? Perhaps, but it works in this case where the setup is relatively simple. 
+  * With `.101` and `.102`, lb02 outranks lb01 and takes the vIP when both nodes boot together. 
+  * Renumbering the hosts changes which one wins, so set it explicitly in `host_vars` if you'd rather decide the election yourself.
+
+- Both nodes start in `BACKUP` with `nopreempt` set, so a node that comes back after an outage waits for the peer to fail instead of taking the vIP from it.
 
 ## Example Playbook
 
-    ```yaml
-    - name: Configure load balancers
-      hosts: load_balancers
-      become: true
-      roles:
-        - load_balancers
-    ```
+  ```yaml
+  - name: Configure load balancers
+    hosts: load_balancers
+    become: true
+    roles:
+      - load_balancers
+  ```
 
-In this repo, the role runs from `playbooks/site.yml` against the whole cluster, guarded by group membership:
+In this repo it runs from `playbooks/site.yml` against the whole cluster, guarded by group membership:
 
-    ```yaml
-    - name: Run load balancer role
-      ansible.builtin.include_role:
-        name: load_balancers
-      when: "'load_balancers' in group_names"
-    ```
+  ```yaml
+  - name: Run load balancer role
+    ansible.builtin.include_role:
+      name: load_balancers
+    when: "'load_balancers' in group_names"
+  ```
 
-## What the role does
+## What the Role Does
 
-1. Installs haproxy, keepalived, socat and libuser. socat is there to read backend state off the HAProxy admin socket. 
-2. Creates `keepalived_script`, a nologin system account. keepalived is configured with `enable_script_security`, which means it will not run the health check as root.
-3. Drops `check_haproxy.sh` into `/usr/local/bin`.
-4. Copies the stock `haproxy.cfg` to `haproxy.cfg.original`, once. `force: false` keeps a second run from overwriting that backup with the generated config.
-5. Templates both configs. Each is validated before it is written (`haproxy -c`, `keepalived -t`), so a bad template (should) fail the task.
-6. Starts and enables haproxy first, then keepalived, so the vIP never lands on a node with nothing listening behind it.
+1. Installs haproxy, keepalived, socat and libuser. socat reads backend state off the HAProxy admin socket. libuser is what `ansible.builtin.user` needs to create a local account (sometimes not installed by default on smaller Debian and Ubuntu images).
+2. Creates `keepalived_script`, a nologin system account. keepalived runs with `enable_script_security`. We don't want the health check to run as root.
+3. Places `check_haproxy.sh` in `/usr/local/bin`.
+4. Copies the stock `haproxy.cfg` to `haproxy.cfg.original`, once. `force: false` keeps a second run from overwriting the backup with generated config. We may want to reference it later on.
+5. Templates both configs, each validated before it is written (`haproxy -c`, `keepalived -t`), so a bad template (should) fail the task rather than the service.
+6. Starts and enables haproxy *first*, then keepalived, so the vIP never lands on a node with nothing listening behind it.
 
-Config changes notify a reload rather than a restart, so established connections survive a re-run.
+Config changes notify a reload rather than a restart, so established connections should survive a re-run.
 
-## How the two parts fit together
+## How HAProxy and keepalived Fit Together
 
-**HAProxy forwards connections.** 
-  - Runs in TCP mode and does not terminate TLS (would break client cert auth).
-  - The frontend binds `*:6443` rather than the vIP, so HAProxy starts and health checks on both nodes whether or not that node currently holds the address. The idle instance is already warm when the vIP moves to it.
+HAProxy runs in TCP mode and doesn't terminate TLS (In this case, that would break client certificate auth). 
 
-- Backends are checked with `GET /readyz`, expecting a 200. 
-  * `/readyz` is the endpoint that fails first when a control plane node shuts down.
-  * `/livez` would keep answering. 
-  * At `inter 3s fall 3`, a control node is marked down about nine seconds after it stops answering.
+The frontend binds `*:6443` rather than the vIP, so both instances start and health check whether or not that node holds the address. The idle one is already "warm" when the vIP moves to it.
 
-- Client and server timeouts are set to four hours. 
-- The 50s default cuts off `kubectl exec` and `kubectl port-forward` sessions.
+Backends are checked with `GET /readyz`, expecting a 200. `/readyz` is the endpoint that fails first when a control plane node shuts down; `/livez` keeps answering. Client and server timeouts are four hours, because Debian's stock 50s cuts off `kubectl exec` and `kubectl port-forward`.
 
-**keepalived owns the virtual IP.** 
-- The two nodes exchange VRRP advertisements once a second. 
-- If the node holding the vIP stops advertising, the other claims the address in ~3.5s.
+keepalived owns the vIP. `check_haproxy.sh` is what ties the two together: it passes only when `pgrep -x haproxy` finds the process and `ss` shows something listening on 6443, so keepalived releases the address when HAProxy is present but not serving.
 
-- `check_haproxy.sh` ties the two together. 
-  * It runs every two seconds.
-  * `pgrep -x haproxy` finds the process.
-  * `ss` shows something listening on 6443. 
-  * Two consecutive failures release the vIP, so HAProxy dying on the active node moves the address in ~4s. 
-  * Two consecutive good checks bring the node back into the running.
+### Failover Timing
 
-## Checking it
+Based on the setup, this is how failover timing *should* work:
 
-- Find the vIP. Only one node should have it:
+| Event                                    | Detected by                            | Time to act                    |
+| ---------------------------------------- | -------------------------------------- | ------------------------------ |
+| Control node stops answering `/readyz`   | HAProxy, `inter 3s fall 3`             | ~9s to mark it down            |
+| HAProxy dies on the node holding the vIP | `check_haproxy.sh`, every 2s, `fall 2` | ~4s to release the vIP         |
+| Node holding the vIP stops advertising   | VRRP, `advert_int 1`                   | ~3.5s for the peer to claim it |
 
-    `ip -brief addr`
+## Checking It
 
-- Watch VRRP state changes:
+  ```sh
+  ip -brief addr                              # exactly one node should hold the vIP
+  journalctl -u keepalived -f                 # VRRP state changes
+  curl -sk https://<vip>:6443/readyz          # the endpoint answers through the vIP
+  echo "show stat" | socat /run/haproxy/admin.sock stdio | cut -d, -f1,2,18
+  ```
 
-    `journalctl -u keepalived -f`
+The stats page at `http://<load balancer IP>:8404/stats` binds each node's own address, not the vIP, so each one reports on *itself*, not both nodes.
 
-- Read backend health:
-
-    `echo "show stat" | socat /run/haproxy/admin.sock stdio | cut -d, -f1,2,18`
-
-- Or, open `http://<load balancer IP>:8404/stats` in a browser. 
-  * The stats listener binds the node's own address, not the vIP, so each node reports on
-itself.
-
-- Confirm the endpoint answers through the vIP:
-
-    `curl -sk https://<vip>:6443/readyz`
-
-- Test failover by stopping HAProxy on whichever node holds the address. Then look for the vIP on the other node a few seconds later.
+**To test failover:** Stop HAProxy on whichever node holds the address and look for the vIP on the other one a few seconds later.

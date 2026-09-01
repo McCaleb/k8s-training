@@ -1,0 +1,34 @@
+# OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+
+# Secrets
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.auto.tfvars
+vault-password
+*.vault
+*secret*
+*Secret*
+
+# Ansible
+.ansible/
+*.retry
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+
+# Claude Code
+.claude/
+.claude.json
+.claude.json.backup
+.mcp.json
+CLAUDE.md
+CLAUDE.local.md

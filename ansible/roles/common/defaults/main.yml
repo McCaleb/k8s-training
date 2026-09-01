@@ -1,11 +1,22 @@
 ---
-# defaults file for common
+# common: default variables
 
+common_timezone: "America/Chicago"
+common_qemu_guest_agent: true
+common_journald_persistent: true
 common_packages:
   - tree
   - vim
   - apt-file
   - needrestart
+common_k8s_prereq_packages:
+  - fio
+  - conntrack          # kube-proxy needs it
+  - socat              # kubectl port-forward needs it
+  - ethtool            # CNI plugins use it for interface config
+  - nftables
+  - netcat-openbsd
+  - containerd
 
 ## Time
 common_ntp_sources:
@@ -21,3 +32,15 @@ common_ntp_sources:
   - directive: server
     address: time.cloudflare.com
     options: iburst
+common_ntp_verify: true
+common_ntp_minsources: 2
+
+## CRI
+common_containerd_systemdcgroup: true
+
+## k8s
+common_k8s_hold_packages:
+  - kubeadm
+  - kubelet
+  - kubectl
+...

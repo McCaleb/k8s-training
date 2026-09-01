@@ -3,7 +3,7 @@ terraform {
 
   required_providers {
     proxmox = {
-      source = "bpg/proxmox"
+      source  = "bpg/proxmox"
       version = "~> 0.111.0"
     }
   }
@@ -28,12 +28,12 @@ locals {
   }
 
   workers = {
-    d-k8s-wk01 = { vm_id = 1007, ip = "172.16.1.107/24", node = "node01" }
-    d-k8s-wk02 = { vm_id = 1008, ip = "172.16.1.108/24", node = "node02" }
-    d-k8s-wk03 = { vm_id = 1009, ip = "172.16.1.109/24", node = "node03" }
-    d-k8s-wk04 = { vm_id = 1010, ip = "172.16.1.110/24", node = "node04" }
-    d-k8s-wk05 = { vm_id = 1011, ip = "172.16.1.111/24", node = "node03" }
-    d-k8s-wk06 = { vm_id = 1012, ip = "172.16.1.112/24", node = "node04" }
+    d-k8s-wn01 = { vm_id = 1007, ip = "172.16.1.107/24", node = "node01" }
+    d-k8s-wn02 = { vm_id = 1008, ip = "172.16.1.108/24", node = "node02" }
+    d-k8s-wn03 = { vm_id = 1009, ip = "172.16.1.109/24", node = "node03" }
+    d-k8s-wn04 = { vm_id = 1010, ip = "172.16.1.110/24", node = "node04" }
+    d-k8s-wn05 = { vm_id = 1011, ip = "172.16.1.111/24", node = "node03" }
+    d-k8s-wn06 = { vm_id = 1012, ip = "172.16.1.112/24", node = "node04" }
   }
 
   all_vms = merge(local.load_balancers, local.control_nodes, local.workers)

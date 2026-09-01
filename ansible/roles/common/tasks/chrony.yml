@@ -1,5 +1,6 @@
-# Configures crony on Debian hosts
 ---
+# common: replace systemd-timesyncd with chrony
+
 - name: Gather service state
   ansible.builtin.service_facts:
 
@@ -10,7 +11,7 @@
         enabled: false
         name: systemd-timesyncd
         state: stopped
-      when: ansible_facts['services']['ntpd.service']['status'] | default('not-found') != 'not-found'
+      when: ansible_facts['services']['systemd-timesyncd.service']['status'] | default('not-found') != 'not-found'
       # when: "'systemd-timesyncd.service' in ansible_facts['services']"
 
     - name: Purge packages and configuration
@@ -57,4 +58,6 @@
   ansible.builtin.command:
               #  waitsync [max-tries [max-correction [max-skew [interval]]]]
     cmd: chronyc waitsync 30 0.1 0.0 1
+  when: common_ntp_verify
   changed_when: false
+...

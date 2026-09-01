@@ -72,7 +72,7 @@ Ansible Roles
 
 - The two nodes exchange VRRP advertisements every second and elect the highest-priority healthy node as MASTER. 
 - The MASTER adds `172.16.1.30/24` to `eth0` and sends gratuitous ARP so switches relearn where the address lives. 
-- The other two carry it in configuration only. It is not present on their interfaces.
+- The other two carry it in configuration only. It isn't present on their interfaces.
 - If advertisements stop, each remaining node waits out `Master_Down_Interval` (about 3.5 seconds) and the highest-priority survivor claims the address.
 - *VRRP needs a single layer 2 segment.* All two nodes and the vIP share one broadcast domain. 
 
@@ -94,7 +94,7 @@ Backend selection is `leastconn`.
 
 ## Coupling 
 
-- VRRP does not detect application failure. If HAProxy dies on the node holding the vIP, keepalived is perfectly happy. 
+- VRRP doesn't detect application failure. If HAProxy dies on the node holding the vIP, keepalived is perfectly happy. 
 - The machine is up, advertisements keep flowing, and the address stays put while clients hit a closed port.
 - To deal with this, a `track_script` runs `pgrep -x haproxy` every 2 seconds. On failure the instance enters FAULT and releases the vIP.
 - The check only confirms the process exists. Don't tie it to a backend health check, because that would mean the vIP refuses to exist before the cluster is built...and it would move the address during routine control plane maintenance.
@@ -110,18 +110,18 @@ Backend selection is `leastconn`.
 With two load balancer nodes there is no spare. While one is down for patching, the other is a single point of failure for the API endpoint. 
 
 
-If both go down, running pods keep running. The kubelet does not need the API server to keep existing containers alive, and in-cluster traffic to `kubernetes.default.svc` never touches the vIP. What stops is `kubectl`, worker kubelet status reporting, kube-proxy updates, and `kubeadm join`. The control plane itself is unaffected, since its components talk to `127.0.0.1:6443`.
+If both go down, running pods keep running. The kubelet doesn't need the API server to keep existing containers alive, and in-cluster traffic to `kubernetes.default.svc` never touches the vIP. What stops is `kubectl`, worker kubelet status reporting, kube-proxy updates, and `kubeadm join`. The control plane itself is unaffected, since its components talk to `127.0.0.1:6443`.
 
 > [!IMPORTANT]
-> That state (both HAProxy servers down) is survivable for minutes, not hours. Once worker kubelets stop reporting, the control plane marks those nodes `NotReady` and eventually starts evicting their pods onto nodes it also cannot reach.
+> That state (both HAProxy servers down) is survivable for minutes, not hours. Once worker kubelets stop reporting, the control plane marks those nodes `NotReady` and eventually starts evicting their pods onto nodes it also can't reach.
 
 ## Client path
 
 - `kubectl` resolves `d-k8s-api.opnsense.lab` to `172.16.1.103`, connects on 6443, and HAProxy relays to a healthy control plane node. 
 
-- Worker kubelets, kube-proxy, and `kubeadm join` take the same path (Control plane components talk to `127.0.0.1:6443` and do not depend on the vIP at all).
+- Worker kubelets, kube-proxy, and `kubeadm join` take the same path (Control plane components talk to `127.0.0.1:6443` and don't depend on the vIP at all).
 
-- *Failover moves an address, not connections.* HAProxy's session state lives in one process on one node and is not replicated. When the vIP moves, the new holder knows nothing about connections established through the old one, so those sessions break. Clients see a reset or a timeout, not a clean close.
+- *Failover moves an address, not connections.* HAProxy's session state lives in one process on one node and isn't replicated. When the vIP moves, the new holder knows nothing about connections established through the old one, so those sessions break. Clients see a reset or a timeout, not a clean close.
 
 - [Watches](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes) reconnect on their own. When the connection breaks, client-go reopens it from the last resource version it saw. `kubectl exec` and `port-forward` don't have that, so those sessions die.
 
@@ -167,7 +167,7 @@ If both go down, running pods keep running. The kubelet does not need the API se
 **`echo "enable server k8s_controlplane/d-k8s-cn02" | socat stdio /run/haproxy/admin.sock`**
 
   - Returns the node to rotation. 
-  - Runtime state does not survive a reload, so a reload during maintenance will silently put a disabled node back in rotation.
+  - Runtime state doesn't survive a reload, so a reload during maintenance will silently put a disabled node back in rotation.
 
 ---
 
@@ -185,17 +185,17 @@ Three VMs run the K8s control plane.
 - `kubelet` runs as a systemd serviceon every node and is what starts static pods.
 - Three copies of etcd need a majority of its members to agree before it accepts a write. 
   * Three members tolerate one failure, because two of three is still a majority. 
-  * Two members tolerate none, because one of two is not.
+  * Two members tolerate none, because one of two isn't.
 
 ## Vocabulary
 
 **Static pod**
 A pod the kubelet runs from a manifest file in `/etc/kubernetes/manifests/`, without the API server's involvement. The API server, controller manager, scheduler, and etcd all run this way, which is how a control plane starts itself before there is an API server to schedule anything. 
 
-Deleting a static pod with kubectl does not remove it, because the kubelet recreates it from the file within seconds. To stop one, move its manifest out of the directory.
+Deleting a static pod with kubectl doesn't remove it, because the kubelet recreates it from the file within seconds. To stop one, move its manifest out of the directory.
 
 **Taint**
-A marker on a node that repels pods which do not explicitly tolerate it. `kubeadm` applies `node-role.kubernetes.io/control-plane:NoSchedule` to every control plane node, which is why ordinary pods will not schedule on this cluster until worker nodes exist.
+A marker on a node that repels pods which don't explicitly tolerate it. `kubeadm` applies `node-role.kubernetes.io/control-plane:NoSchedule` to every control plane node, which is why ordinary pods won't schedule on this cluster until worker nodes exist.
 
 **Container Network Interface (CNI)** 
 The plugin system that gives pods their addresses and carries traffic between them. Kubernetes ships no CNI of its own. Until you install one, the kubelet reports the node as NotReady.
@@ -223,7 +223,7 @@ This word carries 3 unrelated meanings in this guide:
 - The control plane endpoint is a name. 
 - The vIP is where that name points. The
 advertise address is how a specific node identifies itself to the cluster.
-Traffic to the first two passes through HAProxy. Traffic to the third does not.
+Traffic to the first two passes through HAProxy. Traffic to the third doesn't.
 
 ## Three command-line tools
 
@@ -232,8 +232,8 @@ They operate at different layers.
 | Tool      | Talks to                    | When you use it                                                                                    |
 | --------- | --------------------------- | -------------------------------------------------------------------------------------------------- |
 | `kubectl` | The API server              | Almost always                                                                                      |
-| `crictl`  | containerd, through the CRI | The API server is down, or a pod never started, so `kubectl` cannot tell you anything              |
-| `ctr`     | containerd directly         | Almost never. Bypasses the CRI and does not see k8s containers unless you name the right namespace |
+| `crictl`  | containerd, through the CRI | The API server is down, or a pod never started, so `kubectl` can't tell you anything              |
+| `ctr`     | containerd directly         | Almost never. Bypasses the CRI and doesn't see k8s containers unless you name the right namespace |
 
 - When `kubectl get pods` can't help because the control plane itself is broken, `crictl ps -a` on the node is the tool that can.
 
@@ -258,6 +258,6 @@ fio --rw=write --ioengine=sync \
 
 ## CNI (Calico)
 
-- Calico needs to manage the interfaces, so NetworkManager needs to be [configured such that is does not interfere](https://docs.tigera.io/calico/latest/operations/troubleshoot/troubleshooting#configure-networkmanager).
+- Calico needs to manage the interfaces, so NetworkManager needs to be [configured such that is doesn't interfere](https://docs.tigera.io/calico/latest/operations/troubleshoot/troubleshooting#configure-networkmanager).
 
 [Calico Docs](https://docs.tigera.io/calico/latest/about/)

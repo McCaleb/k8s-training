@@ -1,14 +1,15 @@
 ---
-# tasks file for common
+# common: configuration applied to every cluster node
 
 - name: Qemu guest agent
+  when: common_qemu_guest_agent
   block:
     - name: Install qemu-guest-agent
       ansible.builtin.apt:
         name: qemu-guest-agent
         state: present
         update_cache: true
-    
+
     - name: Enable and start qemu-guest-agent service
       ansible.builtin.systemd:
         name: qemu-guest-agent
@@ -26,9 +27,9 @@
   ansible.builtin.import_tasks:
     file: chrony.yml
 
-- name: Set timezone to Asia/Tokyo
+- name: Set timezone
   community.general.timezone:
-    name: "{{ timezone }}"
+    name: "{{ common_timezone }}"
 
 - name: Populate hosts file with cluster systems
   block:
@@ -48,6 +49,7 @@
         src: templates/hosts.j2
 
 - name: Enable persistent logging for the systemd journal
+  when: common_journald_persistent
   block:
     - name: Set storage option to persistent in journald.conf
       community.general.ini_file:
@@ -73,7 +75,7 @@
       changed_when: false
 
 - name: Set "ll" alias for "ls" command
-  # Becuase I like it
+  # Because I like it
   ansible.builtin.lineinfile:
     line: >-
       alias ll='ls -lah' 2>/dev/null
@@ -84,11 +86,11 @@
     group: root
     owner: root
     state: present
-    # -n flag means "noexec"
+    # -n flag is "noexec"
     validate: 'bash -n %s'
 
 - name: Install and configure k8s basics
-  when: 
+  when:
     ('control_nodes' in group_names) or
     ('worker_nodes' in group_names)
   ansible.builtin.import_tasks:

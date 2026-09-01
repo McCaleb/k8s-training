@@ -1,5 +1,5 @@
 ---
-# # tasks/secondaries.yml for 'control_nodes'
+# control_nodes: join the remaining control plane nodes
 
 - name: Check whether this node has already joined
   ansible.builtin.stat:
@@ -26,7 +26,7 @@
 
     - name: Generate a join command
       ansible.builtin.command:
-        cmd: "kubeadm token create --ttl 5m --print-join-command"
+        cmd: "kubeadm token create --ttl {{ control_nodes_join_token_ttl | default('5m') }} --print-join-command"
       register: __control_nodes_join_command
       changed_when: true
 

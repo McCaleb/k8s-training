@@ -1,5 +1,5 @@
 ---
-# handlers file for common
+# common: handlers
 
 - name: Restart chrony
   ansible.builtin.service:

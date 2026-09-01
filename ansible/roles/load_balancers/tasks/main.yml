@@ -1,5 +1,5 @@
 ---
-# tasks file for load_balancers
+# load_balancers: install and configure HAProxy and keepalived
 
 - name: Install packages
   ansible.builtin.apt:

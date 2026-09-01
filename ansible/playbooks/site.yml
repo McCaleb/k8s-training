@@ -1,6 +1,8 @@
 ---
+# Build the cluster: patch, baseline, then per-node-type roles
+
 - name: Configure kubernetes nodes
-  hosts: d-k8s-cn01.opnsense.lab
+  hosts: all
   # control_nodes
   become: true
   any_errors_fatal: true
@@ -27,7 +29,8 @@
         name: control_nodes
       when: "'control_nodes' in group_names"
 
-    - name: Run worker node role
-      ansible.builtin.include_role:
-        name: worker_nodes
-      when: "'worker_nodes' in group_names"
+    # - name: Run worker node role
+    #   ansible.builtin.include_role:
+    #     name: worker_nodes
+    #   when: "'worker_nodes' in group_names"
+...

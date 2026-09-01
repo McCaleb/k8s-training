@@ -1,14 +1,9 @@
 ---
+# common: runtime and kubeadm prep, Kubernetes nodes only
+
 - name: Install basic prereq packages
   ansible.builtin.apt:
-    name:
-      - fio
-      - conntrack          # kube-proxy needs it
-      - socat              # kubectl port-forward needs it
-      - ethtool            # CNI plugins use it for interface config
-      - nftables
-      - netcat-openbsd
-      - containerd
+    name: "{{ common_k8s_prereq_packages }}"
     state: present
     update_cache: true
 
@@ -44,7 +39,7 @@
   block:
     - name: Persist sysctl params for the runtime and kube-proxy
       ansible.builtin.copy:
-        dest: /etc/sysctl.d/kubernetes.conf
+        dest: /etc/sysctl.d/99-kubernetes.conf
         force: true
         mode: '0644'
         owner: root
@@ -55,21 +50,20 @@
     - name: Reload sysctl
       ansible.builtin.command:
         cmd: "sysctl --system"
-      register: __control_nodes_sysctl_reload
-      changed_when: __control_nodes_sysctl_reload['rc'] == 0
+      register: __common_sysctl_reload
+      changed_when: __common_sysctl_reload['rc'] == 0
 
 - name: Configure containerd CRI
   block:
     - name: Create containerd config file
-      ansible.builtin.copy:
+      ansible.builtin.template:
         backup: false
         dest: /etc/containerd/config.toml
         force: true
         group: root
         mode: '0644'
         owner: root
-        remote_src: false    # false=file is on Ansible controller node
-        src: containerd.config.toml
+        src: containerd.config.toml.j2
 
     - name: Restart containerd
       ansible.builtin.systemd_service:
@@ -125,12 +119,10 @@
       ansible.builtin.dpkg_selections:
         name: "{{ item }}"
         selection: hold
-      loop:
-        - kubeadm
-        - kubelet
-        - kubectl
-      register: __control_nodes_pkg_hold
-      until: __control_nodes_pkg_hold is succeeded
+      loop: "{{ common_k8s_hold_packages }}"
+      when: (common_k8s_hold_packages | default([])) | length > 0
+      register: __common_pkg_hold
+      until: __common_pkg_hold is succeeded
       retries: 5
       delay: 12
 ...

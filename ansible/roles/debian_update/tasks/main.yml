@@ -1,5 +1,5 @@
 ---
-# Patch a Debian host, then reboot for a new kernel or restart stale services.
+# debian_update: patch a Debian host, then reboot or restart stale services
 
 - name: Install needrestart
   ansible.builtin.apt:

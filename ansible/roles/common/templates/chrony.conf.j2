@@ -3,5 +3,5 @@
 {{ source['directive'] | default('server') }} {{ source['address'] }} {{ source['options'] | default('iburst') }}
 {% endfor %}
 
-# Require at least 2 synced sources before system clock updates
-minsources 2
+# Number of synced sources required before system clock updates
+minsources {{ common_ntp_minsources }}

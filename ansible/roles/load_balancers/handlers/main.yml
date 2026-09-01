@@ -1,5 +1,5 @@
 ---
-# handlers file for load_balancers
+# load_balancers: handlers
 
 - name: Reload keepalived
   ansible.builtin.systemd_service:

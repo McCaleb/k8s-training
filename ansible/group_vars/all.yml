@@ -1,0 +1,19 @@
+---
+# Cluster-wide variables, applied to every host
+
+## Cluster
+# curl https://dl.k8s.io/release/stable-1.txt
+# curl https://dl.k8s.io/release/stable-1.35.txt
+k8s_release: "1.35"    # quoted: 1.40 unquoted parses as float 1.4
+primary_control_node: d-k8s-cn01.opnsense.lab
+
+## API endpoint
+vip_cidr: 172.16.1.103/24
+vip_hostname: d-k8s-api
+vip_domain: opnsense.lab
+
+## Cluster networking
+pod_cidr: 10.244.0.0/16
+service_cidr: 10.96.0.0/12
+# lan_cidr: 172.16.1.0/24
+...

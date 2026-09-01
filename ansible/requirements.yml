@@ -1,14 +1,14 @@
 ---
-# roles:
-#   - name: some.role
-#     version: 1.2.0
+# Collections required by the roles in this repo.
+# Install with: ansible-galaxy collection install -r requirements.yml
+
 collections:
+  # timezone, ini_file. 8.0.0 for ini_file's modify_inactive_option.
   - name: community.general
+    version: ">=8.0.0"
 
   - name: ansible.posix
 
-  - name: community.general
-
+  # ipaddr filter, used by common's hosts.j2
   - name: ansible.utils
-
-  # - name: kubernetes.core
+...

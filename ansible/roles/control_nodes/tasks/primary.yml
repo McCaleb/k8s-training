@@ -1,5 +1,5 @@
 ---
-# tasks/primary.yml for 'control_nodes'
+# control_nodes: bootstrap the first control plane node, then install Calico
 
 - name: Determine if control plane is already up
   ansible.builtin.command:

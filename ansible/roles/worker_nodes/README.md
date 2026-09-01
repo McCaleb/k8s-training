@@ -1,54 +1,68 @@
-Role Name
-=========
+# Ansible Role: worker_nodes
 
-A brief description of the role goes here.
+Joins worker nodes to the cluster.
 
-Requirements
-------------
+> **Status: incomplete.** The task file is a work in progress and the role is commented out in `playbooks/site.yml`. Don't run it yet. The sections below are the shape it will take; see [What Is Left](#what-is-left) for the current state.
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+## Requirements
 
-Role Variables
---------------
+- Debian, or a derivative like Ubuntu.
+- `become: true`.
+- `common` has already run, so containerd, the kubeadm packages, swap and sysctl prep are in place.
+- `control_nodes` has already run and the control plane is up.
+- A `worker_nodes` inventory group.
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+## Role Variables
 
-Dependencies
-------------
+### From Inventory
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Defined in `group_vars/all.yml`.
 
-Example Playbook
-----------------
+| Variable               | Example                   | Use                                              |
+| ---------------------- | ------------------------- | ------------------------------------------------ |
+| `primary_control_node` | `d-k8s-cn01.opnsense.lab` | Where join credentials are generated             |
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+### Role Defaults
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+None yet. `defaults/main.yml` is empty.
 
+## Example Playbook
 
-
-
-```
-root@d-k8s-cn01:~# kubeadm init phase upload-certs --upload-certs
-I0828 16:50:07.313959   11042 version.go:260] remote version is much newer: v1.37.0; falling back to: stable-1.35
-[upload-certs] Storing the certificates in Secret "kubeadm-certs" in the "kube-system" Namespace
-[upload-certs] Using certificate key:
-1a44b14b3856a07a96e65b9b60a61cd921dbda575d0c322958167b6461faaace
+```yaml
+- name: Join worker nodes
+  hosts: worker_nodes
+  become: true
+  roles:
+    - worker_nodes
 ```
 
-```
-root@d-k8s-cn01:~# kubeadm token create --print-join-command
-kubeadm join d-k8s-api.opnsense.lab:6443 --token jksc4g.zkvk38oruf9suy2v --discovery-token-ca-cert-hash sha256:9f960c17cea57c7be0411f1996ee0b63ecd322e0a67fb217328953a6823b18ca
+Once the role works, uncomment the block already present in `playbooks/site.yml`:
+
+```yaml
+- name: Run worker node role
+  ansible.builtin.include_role:
+    name: worker_nodes
+  when: "'worker_nodes' in group_names"
 ```
 
+## What the Role Does
 
-```
-kubeadm join d-k8s-api.opnsense.lab:6443 \
---token jksc4g.zkvk38oruf9suy2v \
---discovery-token-ca-cert-hash sha256:9f960c17cea57c7be0411f1996ee0b63ecd322e0a67fb217328953a6823b18ca \
---control-plane \
---certificate-key 1a44b14b3856a07a96e65b9b60a61cd921dbda575d0c322958167b6461faaace \
---apiserver-advertise-address 172.16.1.105
+Nothing usable yet.
+
+## What Is Left
+
+`tasks/main.yml` currently holds three commands copied from `control_nodes/tasks/secondaries.yml` — generate a certificate key, upload the control plane certs, create a join command — but they run on the worker itself rather than on the control plane node, and nothing consumes their output. There is no join task.
+
+To finish it:
+
+- Generate the join command on `primary_control_node` with `delegate_to` and `run_once`, as `control_nodes` does. Workers don't need `kubeadm certs certificate-key` or `upload-certs`; those exist to share control plane certificates and have no purpose here.
+- Run the plain join command, without `--control-plane`.
+- Guard the join on `/etc/kubernetes/kubelet.conf` not existing, so a re-run is a no-op.
+- Drop the `pull images on NON-primary control nodes` block, or rewrite it as an unconditional `kubeadm config images pull`. The `primary_control_node` comparison is left over from the control plane role and is always true here.
+
+## Checking It
+
+```sh
+kubectl get nodes -o wide                    # workers registered and Ready
+kubectl get pods -A -o wide                  # pods scheduling onto them
 ```
