@@ -165,7 +165,7 @@ vCPU over-subscription should be fine, to an extent. RAM over-subscription isn't
 
 This emits a YAML inventory built from the module outputs, one group per node type, with `ansible_host` set from the placement maps.
 
-It isn't yet wired into the Ansible side. The output uses the group names `k8s_load_balancers`, `k8s_control_plane` and `k8s_workers`, while the roles and templates in `ansible/` expect `load_balancers`, `control_nodes` and `worker_nodes`. Reconcile the names before redirecting `ansible/inventory.yml` at this output. See [Known Gaps](#known-gaps).
+It isn't yet wired into the Ansible side. The output uses the group names `k8s_load_balancers`, `k8s_control_plane` and `k8s_workers`, while the roles and templates in `ansible/` expect `load_balancers`, `control_nodes` and `worker_nodes`. Reconcile the names before redirecting `ansible/inventory.yml` at this output. See [Known Issues](#known-issues).
 
 ## Adding or Moving a VM
 
