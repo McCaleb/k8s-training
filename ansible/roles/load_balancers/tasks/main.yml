@@ -67,12 +67,33 @@
         validate: "keepalived -t -f %s"
       notify: "Reload keepalived"
 
-- name: Enable and start services
-  ansible.builtin.systemd_service:
-    enabled: true
-    name: "{{ item }}"
-    state: started
-  loop:
-    - haproxy.service     # Best to do haproxy first
-    - keepalived.service
+- name: Start and enable
+  block:
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable and start services
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: "{{ item }}"
+        state: started
+      loop:
+        - haproxy.service     # Best to do haproxy first
+        - keepalived.service
+
+- name: Check for a listener on API port
+  block:
+    - name: Run haproxy health check script
+      ansible.builtin.script:
+        chdir: /usr/local/bin/
+        cmd: ./check_haproxy.sh
+      register: __load_balancers_check_haproxy
+      failed_when: false
+      changed_when: false
+      
+    - name: Restart haproxy when the API frontend is not bound
+      ansible.builtin.systemd_service:
+        name: haproxy.service
+        state: restarted
+      when: __load_balancers_check_haproxy['rc'] != 0
 ...
