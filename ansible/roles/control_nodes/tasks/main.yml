@@ -32,7 +32,6 @@
         src: /etc/kubernetes/admin.conf
         dest: "/root/.kube/config"
 
-
 - name: Retrieve kubeconfig for workstation use
   when:
     - inventory_hostname == primary_control_node

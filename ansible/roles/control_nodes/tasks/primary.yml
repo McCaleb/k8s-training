@@ -31,7 +31,7 @@
           kubeadm init
           --config /root/kubeadm-config.yaml
           --upload-certs
-        # creates: /etc/kubernetes/admin.conf
+        creates: /etc/kubernetes/admin.conf
       changed_when: true
 
 - name: Install Calico
