@@ -38,6 +38,6 @@
       --certificate-key {{ __control_nodes_cert_key['stdout'] | trim }}
       --apiserver-advertise-address {{ ansible_host }}
   when: not __control_nodes_kubelet_conf['stat']['exists']
-  throttle: 1
+  throttle: 1               # etcd members must be added one at a time
   changed_when: true
 ...
