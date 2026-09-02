@@ -1,3 +1,4 @@
 ---
 # worker_nodes: default variables
+worker_nodes_join_token_ttl: 5m
 ...

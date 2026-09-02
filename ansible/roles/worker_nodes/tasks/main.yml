@@ -1,33 +1,47 @@
 ---
-# worker_nodes: join worker nodes to the cluster (incomplete)
+# worker_nodes: join worker nodes to the cluster
 
-- name: Pull images on NON-primary control nodes
-  when: inventory_hostname != primary_control_node
+- name: Join worker node to the cluster
   block:
-    - name: Pull images required for setting up k8s cluster
+    - name: Check whether this node has already joined
+      ansible.builtin.stat:
+        path: /etc/kubernetes/kubelet.conf
+      register: __worker_nodes_kubelet_conf
+
+    - name: Generate a join command
       ansible.builtin.command:
-        cmd: "kubeadm config images pull"
+        cmd: "kubeadm token create --ttl {{ worker_nodes_join_token_ttl | default('5m') }} --print-join-command"
+      register: __worker_nodes_join_command
       changed_when: true
+      delegate_to: "{{ primary_control_node }}"
+      run_once: true
+      no_log: true
 
-- name: Generate a certificate key
-  ansible.builtin.command:
-    cmd: kubeadm certs certificate-key
-  register: __control_nodes_cert_key
-  changed_when: false
-  no_log: true
+    - name: Join node to the control plane
+      ansible.builtin.command:
+        cmd: "{{ __worker_nodes_join_command['stdout'] | trim }}"
+      when: not __worker_nodes_kubelet_conf['stat']['exists']
+      changed_when: true
+      no_log: true
 
-- name: Upload the control plane certificates
+- name: Verify node is ready
   ansible.builtin.command:
     cmd: >-
-      kubeadm init phase upload-certs --upload-certs
-      --certificate-key {{ __control_nodes_cert_key['stdout'] }}
-  changed_when: true
-  no_log: true
+      kubectl wait --for=condition=Ready
+      node/{{ ansible_facts['hostname'] }}
+      --timeout={{ worker_nodes_ready_timeout }}
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  delegate_to: "{{ primary_control_node }}"
+  changed_when: false
 
-- name: Generate a join command
+- name: Collect cluster node status
   ansible.builtin.command:
-    cmd: kubeadm token create --print-join-command
-  register: __control_nodes_join_command
-  changed_when: true
-  no_log: true
+    cmd: "kubectl get nodes"
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  delegate_to: "{{ primary_control_node }}"
+  run_once: true
+  changed_when: false
+
 ...

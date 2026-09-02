@@ -29,8 +29,8 @@
         name: control_nodes
       when: "'control_nodes' in group_names"
 
-    # - name: Run worker node role
-    #   ansible.builtin.include_role:
-    #     name: worker_nodes
-    #   when: "'worker_nodes' in group_names"
+    - name: Run worker node role
+      ansible.builtin.include_role:
+        name: worker_nodes
+      when: "'worker_nodes' in group_names"
 ...

@@ -18,7 +18,7 @@ opentofu/
 
 ## What Gets Built
 
-| Tier           | Module                  | Count | vCPU | RAM   | Disk   | Addresses          |
+| Type           | Module                  | Count | vCPU | RAM   | Disk   | Addresses          |
 | -------------- | ----------------------- | ----- | ---- | ----- | ------ | ------------------ |
 | Load balancers | `module.load_balancers` | 2     | 2    | 2 GiB | 20 GiB | `172.16.1.101-102` |
 | Control plane  | `module.control_plane`  | 3     | 4    | 8 GiB | 60 GiB | `172.16.1.104-106` |
