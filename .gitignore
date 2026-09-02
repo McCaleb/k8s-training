@@ -16,6 +16,10 @@ vault-password
 *secret*
 *Secret*
 
+#SOPS
+!*.sops.yaml
+!*.sops.env
+
 # Ansible
 .ansible/
 *.retry
